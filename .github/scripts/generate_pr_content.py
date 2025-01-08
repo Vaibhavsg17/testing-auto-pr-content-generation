@@ -14,8 +14,8 @@ def generate_summary(api_provider, api_key, engine_url, prompt):
 
     if api_provider == "openai":
         payload = {
-            "model": "code-davinci-002",
-            "prompt": prompt,
+            "model": "gpt-3.5-turbo",  # Change to a valid model
+            "messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
             "max_tokens": 150,
             "temperature": 0.7,
         }
@@ -30,6 +30,7 @@ def generate_summary(api_provider, api_key, engine_url, prompt):
         raise ValueError(f"Unsupported API provider: {api_provider}")
 
     return call_api(engine_url, headers, payload)
+
 
 def get_git_diff():
     try:
