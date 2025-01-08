@@ -29,6 +29,7 @@ jobs:
         run: |
           git fetch origin "${{ github.event.pull_request.head.ref }}"
           git fetch origin "${{ github.event.pull_request.base.ref }}"
+
           git checkout "${{ github.event.pull_request.head.ref }}"
           git diff "origin/${{ github.event.pull_request.base.ref }}" > "diff.txt"
           {
