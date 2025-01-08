@@ -33,9 +33,11 @@ def generate_summary(api_provider, api_key, engine_url, prompt):
 
 def get_git_diff():
     try:
+        # Fetch the diff between the latest commit and its parent
         diff = subprocess.check_output(["git", "diff", "HEAD^", "HEAD"], text=True)
     except subprocess.CalledProcessError:
-        diff = "No previous commit to compare."
+        # Handle case where there is no previous commit
+        diff = subprocess.check_output(["git", "diff", "HEAD"], text=True)  # Compare against the current commit
     return diff
 
 def main():
@@ -45,11 +47,15 @@ def main():
     api_provider = os.getenv("API_PROVIDER", "openai").lower()
     if api_provider == "openai":
         engine_url = "https://api.openai.com/v1/completions"
-        api_key = os.getenv("OPENAI_API_KEY")  # Securely get OpenAI API key
+        api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set as a GitHub secret
+        if not api_key:
+            raise ValueError("OpenAI API key is missing!")
     elif api_provider == "gemini":
         # Directly use the Gemini Code Review Action, no need for API call
         engine_url = None  # Gemini API key will be passed through GitHub Action
         api_key = os.getenv("GEMINI_API_KEY")  # Securely get Gemini API key
+        if not api_key:
+            raise ValueError("Gemini API key is missing!")
     else:
         raise ValueError(f"Unsupported API provider: {api_provider}")
 
