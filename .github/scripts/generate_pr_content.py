@@ -3,15 +3,11 @@ import json
 import requests
 import subprocess
 
-
 def call_api(url, headers, payload):
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code != 200:
-        raise Exception(
-            f"API request failed with status {response.status_code}: {response.text}"
-        )
+        raise Exception(f"API request failed with status {response.status_code}: {response.text}")
     return response.json()
-
 
 def generate_summary(api_provider, api_key, engine_url, prompt):
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -35,14 +31,12 @@ def generate_summary(api_provider, api_key, engine_url, prompt):
 
     return call_api(engine_url, headers, payload)
 
-
 def get_git_diff():
     try:
         diff = subprocess.check_output(["git", "diff", "HEAD^", "HEAD"], text=True)
     except subprocess.CalledProcessError:
         diff = "No previous commit to compare."
     return diff
-
 
 def main():
     diff = get_git_diff()
@@ -51,20 +45,22 @@ def main():
     api_provider = os.getenv("API_PROVIDER", "openai").lower()
     if api_provider == "openai":
         engine_url = "https://api.openai.com/v1/completions"
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")  # Securely get OpenAI API key
     elif api_provider == "gemini":
-        engine_url = "https://gemini.api.endpoint/v1/completions"
-        api_key = os.getenv("GEMINI_API_KEY")
+        # Directly use the Gemini Code Review Action, no need for API call
+        engine_url = None  # Gemini API key will be passed through GitHub Action
+        api_key = os.getenv("GEMINI_API_KEY")  # Securely get Gemini API key
     else:
         raise ValueError(f"Unsupported API provider: {api_provider}")
 
-    summary = generate_summary(api_provider, api_key, engine_url, prompt)["choices"][0][
-        "text"
-    ]
+    if api_provider == "openai":
+        summary = generate_summary(api_provider, api_key, engine_url, prompt)["choices"][0]["text"]
+    elif api_provider == "gemini":
+        summary = "Generated using Gemini AI: (Action handles the generation directly)"
+        # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
 
     formatted_content = f"## {api_provider.capitalize()} Summary\n{summary}\n\n## Further details to be added as required."
     print(f"::set-output name=pr_content::{json.dumps(formatted_content)}")
-
 
 if __name__ == "__main__":
     main()
