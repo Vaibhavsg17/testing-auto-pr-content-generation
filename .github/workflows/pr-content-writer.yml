@@ -1,44 +1,50 @@
-name: "Automatic PR Content Generator"
+name: Automatic PR Content Generator
 
 on:
-  workflow_dispatch:
-    inputs:
-      runWorkflow:
-        description: 'Manually trigger this workflow?'
-        required: true
-        default: 'yes'
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, synchronized]
     paths-ignore:
       - '.github/workflows/**'
 
 jobs:
   prepare_and_generate_content:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.runWorkflow == 'yes')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated from v2 to v4 to support Node.js 20
-      
+        uses: actions/checkout@v4
+
       - name: Set up Python
-        uses: actions/setup-python@v4  # Updated from v2 to v4 to support Node.js 20
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Get diff of the pull request
+        id: get_diff
+        shell: bash
+        run: |
+          git fetch origin "${{ github.event.pull_request.head.ref }}"
+          git fetch origin "${{ github.event.pull_request.base.ref }}"
+          git checkout "${{ github.event.pull_request.head.ref }}"
+          git diff "origin/${{ github.event.pull_request.base.ref }}" > "diff.txt"
+          {
+            echo "pull_request_diff<<EOF";
+            cat "diff.txt";
+            echo 'EOF';
+          } >> $GITHUB_OUTPUT
+
       - name: Generate PR content
         id: generate_content
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Use secret here
-          API_PROVIDER: ${{ secrets.API_PROVIDER }}  # Set environment variable for API selection
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python .github/scripts/generate_pr_content.py
 
-      - name: Update PR
+      - name: Update PR with generated content
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
