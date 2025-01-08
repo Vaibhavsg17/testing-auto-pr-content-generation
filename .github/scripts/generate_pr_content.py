@@ -64,8 +64,8 @@ def main():
         summary = generate_summary(api_provider, api_key, engine_url, prompt)["choices"][0]["text"]
     elif api_provider == "gemini":
         summary = "Generated using Gemini AI: (Action handles the generation directly)"
-        # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
-
+    # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
+    
     formatted_content = f"## {api_provider.capitalize()} Summary\n{summary}\n\n## Further details to be added as required."
 
     # Output the generated PR content to GitHub Actions output
