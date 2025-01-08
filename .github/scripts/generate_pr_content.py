@@ -67,7 +67,8 @@ def main():
         # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
 
     formatted_content = f"## {api_provider.capitalize()} Summary\n{summary}\n\n## Further details to be added as required."
-    print(f"::set-output name=pr_content::{json.dumps(formatted_content)}")
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
+    f.write(f"pr_content={json.dumps(formatted_content)}\n")
 
 if __name__ == "__main__":
     main()
