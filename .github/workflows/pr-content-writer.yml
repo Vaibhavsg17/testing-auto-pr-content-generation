@@ -32,8 +32,6 @@ jobs:
         run: |
           git fetch origin "${{ github.event.pull_request.head.ref }}"
           git fetch origin "${{ github.event.pull_request.base.ref }}"
-
-          git checkout "${{ github.event.pull_request.head.ref }}"
           git diff "origin/${{ github.event.pull_request.base.ref }}" > "diff.txt"
           {
             echo "pull_request_diff<<EOF";
@@ -41,22 +39,16 @@ jobs:
             echo 'EOF';
           } >> $GITHUB_OUTPUT
 
-      - name: Generate PR content
-        id: generate_content
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          API_PROVIDER: "gemini"
-        run: python .github/scripts/generate_pr_content.py
-
       - name: Update PR with generated content
         uses: rubensflinco/gemini-code-review-action@1.0.5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           github_repository: ${{ github.repository }}
           github_pull_request_number: ${{ github.event.pull_request.number }}
           git_commit_hash: ${{ github.event.pull_request.head.sha }}
-          commit-message: Update pull request content
-          title: 'Automatically Generated PR Summary'
-          body: ${{ steps.generate_content.outputs.pr_content }}
-          branch: 'auto-pr-content-branch'
+          model: text-davinci-003
+          extra_prompt: "Provide a concise summary of the pull request changes."
+          temperature: 0.7
+          max_tokens: 256
+          pull_request_diff: ${{ steps.get_diff.outputs.pull_request_diff }}
