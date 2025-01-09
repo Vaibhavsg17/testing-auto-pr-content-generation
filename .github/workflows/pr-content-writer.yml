@@ -47,7 +47,7 @@ jobs:
           github_repository: ${{ github.repository }}
           github_pull_request_number: ${{ github.event.pull_request.number }}
           git_commit_hash: ${{ github.event.pull_request.head.sha }}
-          model: text-davinci-003
+          model: gemini-1.5-pro-latest
           extra_prompt: "Provide a concise summary of the pull request changes."
           temperature: 0.7
           max_tokens: 256
