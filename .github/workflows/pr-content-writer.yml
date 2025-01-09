@@ -10,11 +10,16 @@ jobs:
   prepare_and_generate_content:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -49,14 +54,28 @@ jobs:
           API_PROVIDER: "gemini"
         run: python .github/scripts/generate_pr_content.py
 
+      - name: Create or Switch to Auto-PR Branch
+        run: |
+          git fetch origin auto-pr-content || true
+          git checkout auto-pr-content || git checkout -b auto-pr-content
+
+      - name: Commit and Push Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add diff.txt
+          git commit -m "Generated PR Content by AI" || echo "No changes to commit"
+          git push origin auto-pr-content || git push --set-upstream origin auto-pr-content
+
       - name: Update PR with generated content
         uses: rubensflinco/gemini-code-review-action@1.0.5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           github_repository: ${{ github.repository }}
           github_pull_request_number: ${{ github.event.pull_request.number }}
           git_commit_hash: ${{ github.event.pull_request.head.sha }}
           commit-message: Update pull request content
           title: 'Automatically Generated PR Summary'
           body: ${{ steps.generate_content.outputs.pr_content }}
-          branch: 'auto-pr-content-branch'
+          branch: 'auto-pr-content'
