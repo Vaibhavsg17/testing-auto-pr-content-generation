@@ -1,8 +1,14 @@
 name: Automatic PR Content Generator
 
 on:
+  workflow_dispatch:
+    inputs:
+      runWorkflow:
+        description: 'Manually trigger this workflow?'
+        required: true
+        default: 'yes'
   pull_request:
-    types: [opened, reopened, synchronized]
+    types: [opened, reopened]
     paths-ignore:
       - '.github/workflows/**'
 
