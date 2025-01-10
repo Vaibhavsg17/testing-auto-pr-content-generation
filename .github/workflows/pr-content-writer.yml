@@ -1,14 +1,16 @@
 name: Automatic PR Content Generator
 
 on:
+  # Manual trigger
   workflow_dispatch:
     inputs:
       runWorkflow:
         description: 'Manually trigger this workflow?'
         required: true
         default: 'yes'
+  # Automatic trigger for pull requests
   pull_request:
-    types: [opened, reopened,synchronize]
+    types: [opened, reopened, synchronized]
     paths-ignore:
       - '.github/workflows/**'
 
@@ -36,9 +38,24 @@ jobs:
         id: get_diff
         shell: bash
         run: |
-          git fetch origin "${{ github.event.pull_request.head.ref }}"
-          git fetch origin "${{ github.event.pull_request.base.ref }}"
-          git diff "origin/${{ github.event.pull_request.base.ref }}" > "diff.txt"
+          # Handle both manual and automatic triggers
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual workflow triggered."
+            # Default base and head branches for manual trigger
+            BASE_BRANCH="main"  # Adjust as per your repo's default branch
+            HEAD_BRANCH="feature"  # Replace with a meaningful branch for testing
+          else
+            echo "Automatic PR workflow triggered."
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+          fi
+
+          # Fetch the base and head branches
+          git fetch origin "$BASE_BRANCH"
+          git fetch origin "$HEAD_BRANCH"
+
+          # Generate the diff
+          git diff "origin/$BASE_BRANCH" "origin/$HEAD_BRANCH" > "diff.txt"
           {
             echo "pull_request_diff<<EOF";
             cat "diff.txt";
@@ -51,8 +68,8 @@ jobs:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           github_repository: ${{ github.repository }}
-          github_pull_request_number: ${{ github.event.pull_request.number }}
-          git_commit_hash: ${{ github.event.pull_request.head.sha }}
+          github_pull_request_number: ${{ github.event.pull_request.number || '0' }}
+          git_commit_hash: ${{ github.event.pull_request.head.sha || 'N/A' }}
           model: gemini-1.5-pro-latest
           extra_prompt: "Provide a concise summary of the pull request changes."
           temperature: 0.7
