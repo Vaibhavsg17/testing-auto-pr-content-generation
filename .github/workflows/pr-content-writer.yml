@@ -5,7 +5,7 @@ on:
     types: [opened, reopened, synchronize]
     paths-ignore:
       - '.github/workflows/**'
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:  # Manual trigger
     inputs:
       base_ref:
         description: "Base branch for manual trigger (default: main)"
@@ -15,6 +15,9 @@ on:
         description: "Head branch for manual trigger (default: feature)"
         required: false
         default: "feature"
+      api_provider:
+        description: "API provider to use (openai or gemini)"
+        required: true
 
 jobs:
   prepare_and_generate_content:
@@ -25,13 +28,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set OpenAI API Key (if OpenAI is used)
-        if: ${{ env.API_PROVIDER == 'openai' }}
-        run: echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-
-      - name: Set API_PROVIDER environment variable
-        run: echo "API_PROVIDER=${{ secrets.API_PROVIDER }}" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -69,13 +65,13 @@ jobs:
             echo 'EOF';
           } >> $GITHUB_OUTPUT
 
-      - name: Run PR content generation
-        id: generate_pr_content
+      - name: Execute generate_pr_content.py for OpenAI
+        if: ${{ github.event.inputs.api_provider == 'openai' }}
         run: |
           python .github/scripts/generate_pr_content.py
 
-      - name: Update PR with generated content
-        if: ${{ steps.get_diff.outputs.pull_request_diff != '' }} # Proceed only if diff is non-empty
+      - name: Update PR with generated content (Gemini)
+        if: ${{ github.event.inputs.api_provider == 'gemini' }}
         uses: rubensflinco/gemini-code-review-action@1.0.5
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
