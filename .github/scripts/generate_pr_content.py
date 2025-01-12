@@ -3,6 +3,7 @@ import json
 import requests
 import subprocess
 
+
 def call_api(url, headers, payload):
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code != 200:
@@ -70,7 +71,9 @@ def main():
         raise ValueError(f"Unsupported API provider: {api_provider}")
 
     if api_provider == "openai":
-        summary = generate_summary(api_provider, api_key, engine_url, prompt)["choices"][0]["text"]
+        summary = generate_summary(api_provider, api_key, engine_url, prompt)[
+            "choices"
+        ][0]["text"]
     elif api_provider == "gemini":
         summary = "Generated using Gemini AI: (Action handles the generation directly)"
     # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
