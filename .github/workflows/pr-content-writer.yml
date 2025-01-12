@@ -5,7 +5,7 @@ on:
     types: [opened, reopened, synchronize]
     paths-ignore:
       - '.github/workflows/**'
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch: # Manual trigger
     inputs:
       base_ref:
         description: "Base branch for manual trigger (default: main)"
@@ -43,7 +43,7 @@ jobs:
           # Determine base and head refs
           BASE_REF="${{ github.event.pull_request.base.ref || github.event.inputs.base_ref }}"
           HEAD_REF="${{ github.event.pull_request.head.ref || github.event.inputs.head_ref }}"
-          
+
           # Fetch branches and generate diff
           git fetch origin "$HEAD_REF" || echo "Failed to fetch head branch $HEAD_REF"
           git fetch origin "$BASE_REF" || echo "Failed to fetch base branch $BASE_REF"
@@ -62,11 +62,26 @@ jobs:
             echo 'EOF';
           } >> $GITHUB_OUTPUT
 
-      - name: Generate PR content
-        if: ${{ steps.get_diff.outputs.pull_request_diff != '' }}
+      - name: Set API Provider (if needed)
+        run: |
+          echo "API_PROVIDER=openai" >> $GITHUB_ENV  # Or use "gemini" if you want to switch providers
+
+      - name: Generate PR Content with OpenAI or Gemini
+        if: ${{ env.API_PROVIDER == 'openai' }}
         run: |
           python generate_pr_content.py
-        env:
-          API_PROVIDER: ${{ secrets.API_PROVIDER }}  # Set to "openai" or "gemini"
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # If using OpenAI
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # If using Gemini
+
+      - name: Update PR with generated content (Gemini)
+        if: ${{ env.API_PROVIDER == 'gemini' }}
+        uses: rubensflinco/gemini-code-review-action@1.0.5
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_repository: ${{ github.repository }}
+          github_pull_request_number: ${{ github.event.pull_request.number || 0 }}
+          git_commit_hash: ${{ github.event.pull_request.head.sha || '' }}
+          model: gemini-1.5-pro-latest
+          extra_prompt: "Provide a concise summary of the pull request changes."
+          temperature: 0.7
+          max_tokens: 256
+          pull_request_diff: ${{ steps.get_diff.outputs.pull_request_diff }}
