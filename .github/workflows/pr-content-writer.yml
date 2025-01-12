@@ -43,42 +43,47 @@ jobs:
         id: get_diff
         shell: bash
         run: |
-          # Determine base and head refs
           BASE_REF="${{ github.event.pull_request.base.ref || github.event.inputs.base_ref }}"
           HEAD_REF="${{ github.event.pull_request.head.ref || github.event.inputs.head_ref }}"
+          echo "Base branch: $BASE_REF"
+          echo "Head branch: $HEAD_REF"
 
-          echo "Fetching changes between base: $BASE_REF and head: $HEAD_REF"
-          
-          # Fetch branches and generate diff
           git fetch origin "$HEAD_REF" || echo "Failed to fetch head branch $HEAD_REF"
           git fetch origin "$BASE_REF" || echo "Failed to fetch base branch $BASE_REF"
           git diff "origin/$BASE_REF" > "diff.txt" || echo "Git diff failed"
 
-          # Validate diff file content
           if [ ! -s diff.txt ]; then
             echo "No changes detected or invalid diff file. Exiting gracefully."
             exit 0
           fi
 
-          # Save diff output to GitHub Actions output
+          echo "Generated diff:"
+          cat diff.txt
+
           {
             echo "pull_request_diff<<EOF";
             cat "diff.txt";
             echo 'EOF';
           } >> $GITHUB_OUTPUT
 
-      - name: Debug PR Diff (for troubleshooting)
-        run: |
-          echo "PR Diff:"
-          cat diff.txt
-
-      - name: Execute generate_pr_content.py for OpenAI
+      - name: Execute OpenAI PR Content Generation
         if: ${{ github.event.inputs.api_provider == 'openai' }}
         run: |
           echo "Executing OpenAI content generation..."
-          python .github/scripts/generate_pr_content.py
+          OUTPUT=$(python .github/scripts/generate_pr_content.py)
+          echo "Generated PR Content:"
+          echo "$OUTPUT"
+          echo "pr_content=$OUTPUT" >> $GITHUB_ENV
 
-      - name: Update PR with generated content (Gemini)
+      - name: Update Pull Request Description (OpenAI)
+        if: ${{ github.event.inputs.api_provider == 'openai' }}
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --body "$pr_content"
+        env:
+          pr_content: ${{ env.pr_content }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update PR with Gemini Content
         if: ${{ github.event.inputs.api_provider == 'gemini' }}
         uses: rubensflinco/gemini-code-review-action@1.0.5
         with:
