@@ -6,8 +6,11 @@ import subprocess
 def call_api(url, headers, payload):
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code != 200:
-        raise Exception(f"API request failed with status {response.status_code}: {response.text}")
+        raise Exception(
+            f"API request failed with status {response.status_code}: {response.text}"
+        )
     return response.json()
+
 
 def generate_summary(api_provider, api_key, engine_url, prompt):
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -15,7 +18,10 @@ def generate_summary(api_provider, api_key, engine_url, prompt):
     if api_provider == "openai":
         payload = {
             "model": "gpt-3.5-turbo",  # Change to a valid model
-            "messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
             "max_tokens": 150,
             "temperature": 0.7,
         }
@@ -38,8 +44,11 @@ def get_git_diff():
         diff = subprocess.check_output(["git", "diff", "HEAD^", "HEAD"], text=True)
     except subprocess.CalledProcessError:
         # Handle case where there is no previous commit
-        diff = subprocess.check_output(["git", "diff", "HEAD"], text=True)  # Compare against the current commit
+        diff = subprocess.check_output(
+            ["git", "diff", "HEAD"], text=True
+        )  # Compare against the current commit
     return diff
+
 
 def main():
     diff = get_git_diff()
@@ -65,11 +74,12 @@ def main():
     elif api_provider == "gemini":
         summary = "Generated using Gemini AI: (Action handles the generation directly)"
     # Here, you would trigger the GitHub Action for Gemini using its pre-configured steps
-    
+
     formatted_content = f"## {api_provider.capitalize()} Summary\n{summary}\n\n## Further details to be added as required."
 
     # Output the generated PR content to GitHub Actions output
     print(f"pr_content={formatted_content}")
+
 
 if __name__ == "__main__":
     main()
