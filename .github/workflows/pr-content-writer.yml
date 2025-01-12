@@ -5,7 +5,7 @@ on:
     types: [opened, reopened, synchronize]
     paths-ignore:
       - '.github/workflows/**'
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
     inputs:
       base_ref:
         description: "Base branch for manual trigger (default: main)"
@@ -45,9 +45,9 @@ jobs:
         run: |
           BASE_REF="${{ github.event.pull_request.base.ref || github.event.inputs.base_ref }}"
           HEAD_REF="${{ github.event.pull_request.head.ref || github.event.inputs.head_ref }}"
-          echo "Base branch: $BASE_REF"
-          echo "Head branch: $HEAD_REF"
 
+          echo "Fetching changes between base: $BASE_REF and head: $HEAD_REF"
+          
           git fetch origin "$HEAD_REF" || echo "Failed to fetch head branch $HEAD_REF"
           git fetch origin "$BASE_REF" || echo "Failed to fetch base branch $BASE_REF"
           git diff "origin/$BASE_REF" > "diff.txt" || echo "Git diff failed"
@@ -57,33 +57,24 @@ jobs:
             exit 0
           fi
 
-          echo "Generated diff:"
+          cat diff.txt
+          echo "pull_request_diff<<EOF" >> $GITHUB_OUTPUT
+          cat diff.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Debug PR Diff
+        run: |
+          echo "API Provider: ${{ github.event.inputs.api_provider }}"
+          echo "Diff File Content:"
           cat diff.txt
 
-          {
-            echo "pull_request_diff<<EOF";
-            cat "diff.txt";
-            echo 'EOF';
-          } >> $GITHUB_OUTPUT
-
-      - name: Execute OpenAI PR Content Generation
+      - name: Execute generate_pr_content.py for OpenAI
         if: ${{ github.event.inputs.api_provider == 'openai' }}
         run: |
           echo "Executing OpenAI content generation..."
-          OUTPUT=$(python .github/scripts/generate_pr_content.py)
-          echo "Generated PR Content:"
-          echo "$OUTPUT"
-          echo "pr_content=$OUTPUT" >> $GITHUB_ENV
+          python .github/scripts/generate_pr_content.py
 
-      - name: Update Pull Request Description (OpenAI)
-        if: ${{ github.event.inputs.api_provider == 'openai' }}
-        run: |
-          gh pr edit ${{ github.event.pull_request.number }} --body "$pr_content"
-        env:
-          pr_content: ${{ env.pr_content }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update PR with Gemini Content
+      - name: Update PR with generated content (Gemini)
         if: ${{ github.event.inputs.api_provider == 'gemini' }}
         uses: rubensflinco/gemini-code-review-action@1.0.5
         with:
