@@ -69,7 +69,7 @@ jobs:
       - name: Generate PR Content with OpenAI or Gemini
         if: ${{ env.API_PROVIDER == 'openai' }}
         run: |
-          python generate_pr_content.py
+          python python .github/scripts/generate_pr_content.py
 
       - name: Update PR with generated content (Gemini)
         if: ${{ env.API_PROVIDER == 'gemini' }}
