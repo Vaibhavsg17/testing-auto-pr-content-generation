@@ -46,6 +46,8 @@ jobs:
           # Determine base and head refs
           BASE_REF="${{ github.event.pull_request.base.ref || github.event.inputs.base_ref }}"
           HEAD_REF="${{ github.event.pull_request.head.ref || github.event.inputs.head_ref }}"
+
+          echo "Fetching changes between base: $BASE_REF and head: $HEAD_REF"
           
           # Fetch branches and generate diff
           git fetch origin "$HEAD_REF" || echo "Failed to fetch head branch $HEAD_REF"
@@ -65,9 +67,15 @@ jobs:
             echo 'EOF';
           } >> $GITHUB_OUTPUT
 
+      - name: Debug PR Diff (for troubleshooting)
+        run: |
+          echo "PR Diff:"
+          cat diff.txt
+
       - name: Execute generate_pr_content.py for OpenAI
         if: ${{ github.event.inputs.api_provider == 'openai' }}
         run: |
+          echo "Executing OpenAI content generation..."
           python .github/scripts/generate_pr_content.py
 
       - name: Update PR with generated content (Gemini)
